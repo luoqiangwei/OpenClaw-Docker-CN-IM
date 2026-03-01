@@ -39,7 +39,7 @@ fi
 # 全量同步配置逻辑
 sync_config_with_env() {
     local config_file="/home/node/.openclaw/openclaw.json"
-    
+
     # 如果文件不存在，创建一个基础骨架
     if [ ! -f "$config_file" ]; then
         echo "配置文件不存在，创建基础骨架..."
@@ -93,9 +93,9 @@ def sync():
     try:
         with open(path, 'r', encoding='utf-8') as f:
             config = json.load(f)
-        
+
         env = os.environ
-        
+
         def ensure_path(cfg, keys):
             curr = cfg
             for k in keys:
@@ -120,36 +120,36 @@ def sync():
                 if api_key: p['apiKey'] = api_key
                 if base_url: p['baseUrl'] = base_url
                 p['api'] = protocol or 'openai-completions'
-                
+
                 mlist = p.get('models', [])
                 m_ids = [x.strip() for x in m_ids_str.split(',') if x.strip()]
-                
+
                 for m_id in m_ids:
                     # 如果 m_id 包含 /，提取模型名部分
                     actual_m_id = m_id.split('/')[-1] if '/' in m_id else m_id
-                    
+
                     m_obj = next((m for m in mlist if m.get('id') == actual_m_id), None)
                     if not m_obj:
-                        m_obj = {'id': actual_m_id, 'name': actual_m_id, 'reasoning': False, 'input': ['text', 'image'], 
+                        m_obj = {'id': actual_m_id, 'name': actual_m_id, 'reasoning': False, 'input': ['text', 'image'],
                                  'cost': {'input': 0, 'output': 0, 'cacheRead': 0, 'cacheWrite': 0}}
                         mlist.append(m_obj)
                     m_obj['contextWindow'] = int(context_window or 200000)
                     m_obj['maxTokens'] = int(max_tokens or 8192)
-                
+
                 p['models'] = mlist
                 return p_name
 
             # Provider 1 (default)
             p1_active = sync_provider(
-                'default', 
-                env.get('API_KEY'), 
-                env.get('BASE_URL'), 
-                env.get('API_PROTOCOL'), 
+                'default',
+                env.get('API_KEY'),
+                env.get('BASE_URL'),
+                env.get('API_PROTOCOL'),
                 env.get('MODEL_ID') or 'gpt-4o',
                 env.get('CONTEXT_WINDOW'),
                 env.get('MAX_TOKENS')
             )
-            
+
             # Provider 2
             p2_name = env.get('MODEL2_NAME') or 'model2'
             p2_active = sync_provider(
@@ -166,10 +166,10 @@ def sync():
             mid_raw = env.get('MODEL_ID') or 'gpt-4o'
             # 获取第一个模型 ID 作为默认 primary
             mid = [x.strip() for x in mid_raw.split(',') if x.strip()][0]
-            
+
             imid_raw = env.get('IMAGE_MODEL_ID') or mid
             imid = [x.strip() for x in imid_raw.split(',') if x.strip()][0]
-            
+
             def get_full_mid(m_id, default_p='default'):
                 if '/' in m_id: return m_id
                 return f'{default_p}/{m_id}'
@@ -177,17 +177,17 @@ def sync():
             if p1_active:
                 ensure_path(config, ['agents', 'defaults', 'model'])['primary'] = get_full_mid(mid)
                 ensure_path(config, ['agents', 'defaults', 'imageModel'])['primary'] = get_full_mid(imid)
-            
+
             # 工作区同步：存在则更新，不存在则恢复默认
             config['agents']['defaults']['workspace'] = env.get('WORKSPACE') or '/home/node/.openclaw/workspace'
-            
+
             # 同步更新 memory 路径
             if 'memory' in config and 'qmd' in config['memory']:
                 config['memory']['qmd']['command'] = '/usr/local/bin/qmd'
                 for p_item in config['memory']['qmd'].get('paths', []):
                     if p_item.get('name') == 'workspace':
                         p_item['path'] = config['agents']['defaults']['workspace']
-            
+
             msg = f'✅ 模型同步完成: 主模型={get_full_mid(mid)}'
             if imid != mid: msg += f', 图片模型={get_full_mid(imid)}'
             if p2_active: msg += f', 已启用备用提供商: {p2_name}'
@@ -201,12 +201,12 @@ def sync():
 
         if env.get('OPENCLAW_PLUGINS_ENABLED'):
             plugins['enabled'] = env['OPENCLAW_PLUGINS_ENABLED'].lower() == 'true'
-        
+
         def sync_feishu(c, e):
             c.update({'enabled': True, 'dmPolicy': 'pairing', 'groupPolicy': 'open'})
             main = ensure_path(c, ['accounts', 'main'])
             main.update({
-                'appId': e['FEISHU_APP_ID'], 
+                'appId': e['FEISHU_APP_ID'],
                 'appSecret': e['FEISHU_APP_SECRET'],
                 'botName': e.get('FEISHU_BOT_NAME') or 'OpenClaw Bot'
             })
@@ -214,7 +214,7 @@ def sync():
 
         def sync_dingtalk(c, e):
             c.update({
-                'enabled': True, 'clientId': e['DINGTALK_CLIENT_ID'], 
+                'enabled': True, 'clientId': e['DINGTALK_CLIENT_ID'],
                 'clientSecret': e['DINGTALK_CLIENT_SECRET'],
                 'robotCode': e.get('DINGTALK_ROBOT_CODE') or e['DINGTALK_CLIENT_ID'],
                 'dmPolicy': 'open', 'groupPolicy': 'open', 'messageType': 'markdown',
@@ -230,7 +230,7 @@ def sync():
 
         # 同步规则矩阵
         sync_rules = [
-            (['TELEGRAM_BOT_TOKEN'], 'telegram', 
+            (['TELEGRAM_BOT_TOKEN'], 'telegram',
              lambda c, e: c.update({'botToken': e['TELEGRAM_BOT_TOKEN'], 'dmPolicy': 'pairing', 'groupPolicy': 'allowlist', 'streamMode': 'partial'}),
              None),
             (['FEISHU_APP_ID', 'FEISHU_APP_SECRET'], 'feishu', sync_feishu,
@@ -269,17 +269,22 @@ def sync():
             gw['port'] = int(env.get('OPENCLAW_GATEWAY_PORT') or 18789)
             gw['bind'] = env.get('OPENCLAW_GATEWAY_BIND') or '0.0.0.0'
             gw['mode'] = env.get('OPENCLAW_GATEWAY_MODE') or 'local'
-            
+
             # --- Control UI 配置 ---
             cui = ensure_path(gw, ['controlUi'])
             cui['allowInsecureAuth'] = env.get('OPENCLAW_GATEWAY_ALLOW_INSECURE_AUTH', 'true').lower() == 'true'
             cui['dangerouslyDisableDeviceAuth'] = env.get('OPENCLAW_GATEWAY_DANGEROUSLY_DISABLE_DEVICE_AUTH', 'false').lower() == 'true'
             if env.get('OPENCLAW_GATEWAY_ALLOWED_ORIGINS'):
                 cui['allowedOrigins'] = [x.strip() for x in env['OPENCLAW_GATEWAY_ALLOWED_ORIGINS'].split(',') if x.strip()]
-            
+
             auth = ensure_path(gw, ['auth'])
             auth['token'] = env['OPENCLAW_GATEWAY_TOKEN']
             auth['mode'] = env.get('OPENCLAW_GATEWAY_AUTH_MODE') or 'token'
+
+            http = ensure_path(gw, ['http'])
+            endpoints = ensure_path(http, ['endpoints'])
+            chatCompletions = ensure_path(endpoints, ['chatCompletions'])
+            chatCompletions['enabled'] = True
 
             print('✅ Gateway 同步完成')
 
@@ -287,7 +292,7 @@ def sync():
         ensure_path(config, ['meta'])['lastTouchedAt'] = datetime.utcnow().strftime('%Y-%m-%dT%H:%M:%S.%f')[:-3] + 'Z'
         with open(path, 'w', encoding='utf-8') as f:
             json.dump(config, f, indent=2, ensure_ascii=False)
-            
+
     except Exception as e:
         print(f'❌ 同步失败: {e}', file=sys.stderr)
         sys.exit(1)
@@ -310,7 +315,7 @@ else
     # 简单的 shell 逻辑来处理可能的 provider 前缀
     FINAL_MID="${MODEL_ID:-gpt-4o}"
     [[ "$FINAL_MID" != */* ]] && FINAL_MID="default/$FINAL_MID"
-    
+
     FINAL_IMID="${IMAGE_MODEL_ID:-${MODEL_ID:-gpt-4o}}"
     [[ "$FINAL_IMID" != */* ]] && FINAL_IMID="default/$FINAL_IMID"
 

@@ -12,7 +12,7 @@ fi
 CURRENT_VERSION=$(cat $VERSION_FILE)
 
 # 3. Define the image name
-IMAGE_NAME="openclaw-docker-cn-im"
+IMAGE_NAME="justlikemaki/openclaw-docker-cn-im"
 TAG="v$CURRENT_VERSION"
 
 echo "------------------------------------------"

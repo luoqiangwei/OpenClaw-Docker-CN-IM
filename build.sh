@@ -42,5 +42,4 @@ else
     exit 1
 fi
 
-mkdir data
-mkdir sqlite_data
+mkdir workspace
